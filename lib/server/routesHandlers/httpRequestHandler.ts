@@ -30,7 +30,7 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
       localHostname.endsWith('-1') &&
       localHostname.match(regex)
     ) {
-      const buffer = new stream.PassThrough()
+      const buffer = new stream.PassThrough();
       const url = new URL(`http://${req.hostname}${req.url}`);
       url.hostname = req.hostname.replace(/-[0-9]{1,2}\./, '.');
       url.searchParams.append('connection_role', 'primary');
@@ -43,15 +43,16 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
       if (req.body) {
         postFilterPreparedRequest.body = JSON.stringify(req.body);
       }
+      logger.debug({ postFilterPreparedRequest }, 'debug request');
       try {
         const httpResponse = await makeStreamingRequestToDownstream(
           postFilterPreparedRequest,
         );
         res.writeHead(httpResponse.statusCode ?? 500, httpResponse.headers);
-        httpResponse.on('error', (error)=> {
-          logger.error({error}, 'Error relaying request.')
-        })
-        return await pipeline(httpResponse, buffer,res);
+        httpResponse.on('error', (error) => {
+          logger.error({ error }, 'Error relaying request.');
+        });
+        return await pipeline(httpResponse, buffer, res);
       } catch (err) {
         logger.error({ err }, `Error in HTTP middleware: ${err}`);
         res.status(500).send('Error forwarding request to primary');
