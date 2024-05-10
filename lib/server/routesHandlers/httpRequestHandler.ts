@@ -40,8 +40,10 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
         headers: req.headers,
         method: req.method,
       };
-      if (req.body) {
-        postFilterPreparedRequest.body = JSON.stringify(req.body);
+      
+      if (req.method == 'POST' || req.method == 'PUT' || req.method == 'PATCH') {
+        logger.debug({body: req.body}, 'body')
+        postFilterPreparedRequest.body = req.body;
       }
       logger.debug({ postFilterPreparedRequest }, 'debug request');
       try {
@@ -63,6 +65,7 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
         await pipeline(httpResponse, buffer, res);
         return
       } catch (err) {
+        console.log(err)
         logger.error({ err }, `Error in HTTP middleware: ${err}`);
         res.status(500).send('Error forwarding request to primary');
       }
