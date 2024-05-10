@@ -7,6 +7,7 @@ import { hostname } from 'node:os';
 import { makeStreamingRequestToDownstream } from '../../common/http/request';
 import { PostFilterPreparedRequest } from '../../common/relay/prepareRequest';
 import { URL, URLSearchParams } from 'node:url';
+import stream from 'stream';
 
 export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
   req: Request,
@@ -28,6 +29,7 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
       localHostname.endsWith('-1') &&
       localHostname.match(regex)
     ) {
+      const buffer = new stream.PassThrough()
       const url = new URL(`http://${req.hostname}${req.url}`);
       url.hostname = req.hostname.replace(/-[0-9]{1,2}\./, '.');
       url.searchParams.append('connection_role', 'primary');
@@ -45,7 +47,7 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
           postFilterPreparedRequest,
         );
         res.writeHead(httpResponse.statusCode ?? 500, httpResponse.headers);
-        return httpResponse.pipe(res);
+        return httpResponse.pipe(buffer).pipe(res);
       } catch (err) {
         logger.error({ err }, `Error in HTTP middleware: ${err}`);
         res.status(500).send('Error forwarding request to primary');
