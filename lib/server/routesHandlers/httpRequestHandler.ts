@@ -8,6 +8,7 @@ import { makeStreamingRequestToDownstream } from '../../common/http/request';
 import { PostFilterPreparedRequest } from '../../common/relay/prepareRequest';
 import { URL, URLSearchParams } from 'node:url';
 import stream from 'stream';
+import { pipeline } from 'node:stream/promises';
 
 export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
   req: Request,
@@ -50,7 +51,7 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
         httpResponse.on('error', (error)=> {
           logger.error({error}, 'Error relaying request.')
         })
-        return httpResponse.pipe(buffer).pipe(res);
+        return await pipeline(httpResponse, buffer,res);
       } catch (err) {
         logger.error({ err }, `Error in HTTP middleware: ${err}`);
         res.status(500).send('Error forwarding request to primary');
