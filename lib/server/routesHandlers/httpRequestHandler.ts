@@ -56,6 +56,7 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
           logger.debug({ chunk }, 'data');
         });
         httpResponse.on('end', () => {
+          buffer.end();
           logger.debug({}, 'end');
         });
         return await pipeline(httpResponse, buffer, res);
