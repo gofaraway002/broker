@@ -52,6 +52,12 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
         httpResponse.on('error', (error) => {
           logger.error({ error }, 'Error relaying request.');
         });
+        httpResponse.on('data', (chunk) => {
+          logger.debug({ chunk }, 'data');
+        });
+        httpResponse.on('end', () => {
+          logger.debug({}, 'end');
+        });
         return await pipeline(httpResponse, buffer, res);
       } catch (err) {
         logger.error({ err }, `Error in HTTP middleware: ${err}`);
