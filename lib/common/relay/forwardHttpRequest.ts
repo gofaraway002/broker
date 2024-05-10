@@ -105,6 +105,7 @@ export const forwardHttpRequest = (
         simplifiedContextWithStreamingID,
         '[HTTP Flow] Brokering request through WS',
       );
+      logger.debug({url:req.url, method: req.method,body: req.body, headers: req.headers})
       res.locals.websocket.send('request', {
         url: req.url,
         method: req.method,
