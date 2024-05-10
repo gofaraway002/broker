@@ -8,7 +8,6 @@ import { makeStreamingRequestToDownstream } from '../../common/http/request';
 import { PostFilterPreparedRequest } from '../../common/relay/prepareRequest';
 import { URL, URLSearchParams } from 'node:url';
 import stream from 'stream';
-import { error } from 'node:console';
 
 export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
   req: Request,
