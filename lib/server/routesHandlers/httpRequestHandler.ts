@@ -58,8 +58,10 @@ export const overloadHttpRequestWithConnectionDetailsMiddleware = async (
         httpResponse.on('end', () => {
           buffer.end();
           logger.debug({}, 'end');
+          
         });
-        return await pipeline(httpResponse, buffer, res);
+        await pipeline(httpResponse, buffer, res);
+        return
       } catch (err) {
         logger.error({ err }, `Error in HTTP middleware: ${err}`);
         res.status(500).send('Error forwarding request to primary');
