@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { createWebSocket, createWebSockets } from './socket';
+import { createWebSocket } from './socket';
 import { log as logger } from '../logs/logger';
 import { forwardHttpRequest } from '../common/relay/forwardHttpRequest';
 import { webserver } from '../common/http/webserver';
@@ -21,15 +21,7 @@ import { loadAllFilters } from '../common/filter/filtersAsync';
 import { ClientOpts, LoadedClientOpts } from '../common/types/options';
 import { websocketConnectionSelectorMiddleware } from './routesHandler/websocketConnectionMiddlewares';
 import { getClientConfigMetadata } from './config/configHelpers';
-import { fetchJwt } from './auth/oauth';
-import {
-  CONFIGURATION,
-  getConfig,
-  loadBrokerConfig,
-} from '../common/config/config';
-import { retrieveConnectionsForDeployment } from './config/remoteConfig';
-import { handleTerminationSignal } from '../common/utils/signals';
-import { cleanUpUniversalFile } from './utils/cleanup';
+import { manageWebsocketConnections } from './connectionsManager/manager';
 
 process.on('uncaughtException', (error) => {
   if (error.message == 'read ECONNRESET') {
@@ -62,31 +54,6 @@ export const main = async (clientOpts: ClientOpts) => {
       'https://api.snyk.io';
 
     await validateMinimalConfig(clientOpts);
-
-    if (
-      clientOpts.config.brokerClientConfiguration.common.oauth?.clientId &&
-      clientOpts.config.brokerClientConfiguration.common.oauth?.clientSecret &&
-      !process.env.SKIP_REMOTE_CONFIG
-    ) {
-      clientOpts.accessToken = await fetchJwt(
-        clientOpts.config.API_BASE_URL,
-        clientOpts.config.brokerClientConfiguration.common.oauth.clientId,
-        clientOpts.config.brokerClientConfiguration.common.oauth.clientSecret,
-      );
-      await retrieveConnectionsForDeployment(
-        clientOpts,
-        `${__dirname}/../../../../config.universal.json`,
-      );
-      // Reload config with connection
-      await loadBrokerConfig();
-      const globalConfig = { config: getConfig() };
-      clientOpts.config = Object.assign(
-        {},
-        clientOpts.config,
-        globalConfig.config,
-      ) as Record<string, any> as CONFIGURATION;
-      handleTerminationSignal(cleanUpUniversalFile);
-    }
     const loadedClientOpts: LoadedClientOpts = {
       loadedFilters: loadAllFilters(clientOpts.filters, clientOpts.config),
       ...clientOpts,
@@ -99,6 +66,7 @@ export const main = async (clientOpts: ClientOpts) => {
 
     const brokerClientId = uuidv4();
     logger.info({ brokerClientId }, 'generated broker client id');
+
     const hookResults = await processStartUpHooks(clientOpts, brokerClientId);
 
     const globalIdentifyingMetadata: IdentifyingMetadata = {
@@ -109,25 +77,16 @@ export const main = async (clientOpts: ClientOpts) => {
       version,
       clientConfig: getClientConfigMetadata(clientOpts.config),
       role: Role.primary,
+      id: '',
+      isDisabled: false,
     };
 
     let websocketConnections: WebSocketConnection[] = [];
     if (loadedClientOpts.config.universalBrokerEnabled) {
-      const integrationsKeys = loadedClientOpts.config.connections
-        ? Object.keys(loadedClientOpts.config.connections)
-        : [];
-
-      if (integrationsKeys.length < 1) {
-        logger.error(
-          {},
-          `No connection found. Please add connections to config.${process.env.SERVICE_ENV}.json.`,
-        );
-      } else {
-        websocketConnections = createWebSockets(
-          loadedClientOpts,
-          globalIdentifyingMetadata,
-        );
-      }
+      websocketConnections = await manageWebsocketConnections(
+        loadedClientOpts,
+        globalIdentifyingMetadata,
+      );
     } else {
       websocketConnections.push(
         createWebSocket(

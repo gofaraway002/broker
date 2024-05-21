@@ -17,42 +17,20 @@ import { chunkHandler } from './socketHandlers/chunkHandler';
 import { initializeSocketHandlers } from './socketHandlers/init';
 
 import { LoadedClientOpts } from '../common/types/options';
-import { translateIntegrationTypeToBrokerIntegrationType } from './utils/integrations';
 import { maskToken } from '../common/utils/token';
 import { fetchJwt } from './auth/oauth';
 
-export const createWebSockets = (
+export const createWebSocketConnectionPairs = (
+  websocketConnections: WebSocketConnection[],
   clientOpts: LoadedClientOpts,
-  globalIdentifyingMetadata: IdentifyingMetadata,
-): WebSocketConnection[] => {
-  const integrationsKeys = clientOpts.config.connections
-    ? Object.keys(clientOpts.config.connections)
-    : [];
-  const websocketConnections: WebSocketConnection[] = [];
-  for (let i = 0; i < integrationsKeys.length; i++) {
-    const socketIdentifyingMetadata = Object.assign(
-      {},
-      globalIdentifyingMetadata,
-    );
-    socketIdentifyingMetadata.friendlyName = integrationsKeys[i];
-    socketIdentifyingMetadata.identifier =
-      clientOpts.config.connections[`${integrationsKeys[i]}`]['identifier'];
-    const integrationType =
-      clientOpts.config.connections[`${integrationsKeys[i]}`].type;
-
-    // This type is different for broker, ECR/ACR/DockeHub/etc are all container-registry-agent type for broker
-    socketIdentifyingMetadata.supportedIntegrationType =
-      translateIntegrationTypeToBrokerIntegrationType(integrationType);
-    socketIdentifyingMetadata.serverId =
-      clientOpts.config.connections[`${integrationsKeys[i]}`].serverId ?? '';
-    websocketConnections.push(
-      createWebSocket(clientOpts, socketIdentifyingMetadata, Role.primary),
-    );
-    websocketConnections.push(
-      createWebSocket(clientOpts, socketIdentifyingMetadata, Role.secondary),
-    );
-  }
-  return websocketConnections;
+  socketIdentifyingMetadata: IdentifyingMetadata,
+) => {
+  websocketConnections.push(
+    createWebSocket(clientOpts, socketIdentifyingMetadata, Role.primary),
+  );
+  websocketConnections.push(
+    createWebSocket(clientOpts, socketIdentifyingMetadata, Role.secondary),
+  );
 };
 
 export const createWebSocket = (

@@ -65,26 +65,7 @@ export const processStartUpHooks = async (
     }
     let serverId;
     if (highAvailabilityModeEnabled(clientOpts.config)) {
-      if (clientOpts.config.universalBrokerEnabled) {
-        for (const key in clientOpts.config.connections) {
-          serverId = await getServerId(
-            clientOpts.config,
-            clientOpts.config.connections[key].identifier,
-            brokerClientId,
-          );
-
-          if (serverId === null) {
-            logger.warn(
-              {},
-              'could not receive server id from Broker Dispatcher',
-            );
-            serverId = '';
-          } else {
-            logger.info({ serverId }, 'received server id');
-            clientOpts.config.connections[key].serverId = serverId;
-          }
-        }
-      } else {
+      if (!clientOpts.config.universalBrokerEnabled) {
         serverId = await getServerId(
           clientOpts.config,
           clientOpts.config.brokerToken,
